@@ -35,7 +35,7 @@ void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.println("Hello, World");
+  Serial.println("Hello, World!!!");
 
   pinMode(Buzzer, OUTPUT);
   pinMode(Start, INPUT_PULLUP);
