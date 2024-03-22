@@ -25,11 +25,19 @@ uint8_t numberArray[10] = {_0, _1, _2, _3, _4, _5, _6, _7, _8, _9};
 // put function declarations here:
 void Blink(int);
 void update7segment(void);
+void CoundownLOOP(void);
+void stopCoundown(void);
+void startCoundown(void);
 void shiftOut1(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 void updateShiftRegister();
 
 byte leds = 0;
 byte _index = 0;
+int8_t countdownIndex = 0;
+int8_t countdownFrom = 5;
+boolean countdowning = false;
+boolean countdownDone = false;
+uint32_t countdownMillis = 0;
 
 void setup()
 {
@@ -46,22 +54,68 @@ void setup()
   pinMode(SG_Latch, OUTPUT);
   pinMode(SG_Clock, OUTPUT);
   pinMode(SG_Data, OUTPUT);
+  leds = numberArray[countdownFrom];
   delayMicroseconds(100);
 }
 
 void loop()
 {
   // put your main code here, tso run repeatedly:
-  Blink(Buzzer);
-  update7segment();
+  // Blink(Buzzer);
 
   if (!digitalRead(Start))
-  {
-  }
+    startCoundown();
 
   if (!digitalRead(Stop))
+    stopCoundown();
+
+  CoundownLOOP();
+  update7segment();
+}
+
+void stopCoundown(void)
+{
+  if (countdowning)
   {
+    countdowning = false;
+    leds = numberArray[countdownFrom];
   }
+}
+
+void startCoundown(void)
+{
+  if (!countdowning)
+  {
+    countdowning = true;
+    countdownMillis = millis();
+    countdownIndex = countdownFrom;
+  }
+
+  if (countdownDone)
+  {
+    countdownDone = false;
+    leds = numberArray[countdownFrom];
+  }
+}
+
+void CoundownLOOP(void)
+{
+  if (countdowning && millis() - countdownMillis >= 1000)
+  {
+    countdownMillis = millis();
+    countdownIndex--;
+    leds = numberArray[countdownIndex];
+    if (countdownIndex <= 0)
+    {
+      countdowning = false;
+      countdownDone = true;
+    }
+  }
+
+  if (countdownDone)
+    digitalWrite(Buzzer, HIGH);
+  else
+    digitalWrite(Buzzer, LOW);
 }
 
 // put function definitions here:
@@ -85,31 +139,32 @@ void shiftOut1(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
 
 void Blink(int Pin)
 {
-  static uint32_t time = 0;
-  if (millis() - time > 500)
+  static uint32_t countdownMillis = 0;
+  if (millis() - countdownMillis > 500)
   {
-    time = millis();
+    countdownMillis = millis();
 
-    leds = numberArray[_index];
+    // leds = numberArray[_index];
 
-    if (digitalRead(Pin))
-    {
-      Serial.print("Index: ");
-      Serial.print(_index);
-      Serial.print(", Binary: ");
-      for (int i = 7; i >= 0; i--)
-      {
-        Serial.print(bitRead(leds, i)); // Print each bit
-      }
-      Serial.println(); // Print newline for readability
-      _index++;
-    }
+    // if (digitalRead(Pin))
+    // {
+    //   Serial.print("Index: ");
+    //   Serial.print(_index);
+    //   Serial.print(", Binary: ");
+    //   for (int i = 7; i >= 0; i--)
+    //   {
+    //     Serial.print(bitRead(leds, i)); // Print each bit
+    //   }
+    //   Serial.println(); // Print newline for readability
+    //   _index++;
+    // }
 
-    if (_index > 9)
-    {
-      _index = 0;
-      leds = 0;
-    }
+    // if (_index > 9)
+    // {
+    //   _index = 0;
+    //   leds = 0;
+    // }
+
     digitalWrite(Pin, !digitalRead(Pin));
   }
 }
@@ -126,10 +181,10 @@ void updateShiftRegister()
 
 void update7segment(void)
 {
-  static uint32_t time = 0;
-  if (millis() - time >= 30)
+  static uint32_t countdownMillis = 0;
+  if (millis() - countdownMillis >= 30)
   {
-    time = millis();
+    countdownMillis = millis();
     updateShiftRegister();
   }
 }
