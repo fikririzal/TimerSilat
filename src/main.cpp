@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define SG_Enable 0
+#define SG_Enable 2
 #define SG_Latch 12
 #define SG_Clock 13
 #define SG_Data 14
@@ -30,6 +30,7 @@ void stopCoundown(void);
 void startCoundown(void);
 void shiftOut1(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 void updateShiftRegister();
+void BtnHandler();
 
 byte leds = 0;
 byte _index = 0;
@@ -38,6 +39,12 @@ int8_t countdownFrom = 5;
 boolean countdowning = false;
 boolean countdownDone = false;
 uint32_t countdownMillis = 0;
+
+const int numOfInputs = 2;
+const int inputPins[numOfInputs] = {Start, Stop};
+uint32_t btnTimer[numOfInputs] = {0, 0};
+bool btnState[numOfInputs] = {false, false};
+bool btnLstate[numOfInputs] = {false, false};
 
 void setup()
 {
@@ -63,39 +70,70 @@ void loop()
   // put your main code here, tso run repeatedly:
   // Blink(Buzzer);
 
-  if (!digitalRead(Start))
+  BtnHandler();
+
+  if (btnState[0])
     startCoundown();
 
-  if (!digitalRead(Stop))
+  if (btnState[1])
     stopCoundown();
 
   CoundownLOOP();
   update7segment();
 }
 
+void BtnHandler()
+{
+  for (int i = 0; i < numOfInputs; i++)
+  {
+    btnState[i] = 0;
+    if (!digitalRead(inputPins[i]))
+    {
+      digitalWrite(Buzzer, HIGH);
+      if (millis() - btnTimer[i] >= 500)
+      {
+        btnState[i] = 1;
+        btnTimer[i] = millis() - 400;
+      }
+      else if (!btnLstate[i] && millis() - btnTimer[i] >= 10)
+      {
+        btnLstate[i] = btnState[i] = 1;
+      }
+    }
+    else
+    {
+      btnTimer[i] = millis();
+      btnLstate[i] = 0;
+    }
+  }
+}
+
 void stopCoundown(void)
 {
-  if (countdowning)
-  {
-    countdowning = false;
-    leds = numberArray[countdownFrom];
-  }
+  countdowning = false;
+  countdownDone = false;
+  leds = numberArray[countdownFrom];
+
+  while (!digitalRead(Stop))
+    ;
+  digitalWrite(Buzzer, LOW);
 }
 
 void startCoundown(void)
 {
-  if (!countdowning)
+  if (countdownIndex <= 0)
   {
-    countdowning = true;
-    countdownMillis = millis();
-    countdownIndex = countdownFrom;
   }
 
-  if (countdownDone)
-  {
-    countdownDone = false;
-    leds = numberArray[countdownFrom];
-  }
+  countdowning = true;
+  countdownDone = false;
+  countdownIndex = countdownFrom;
+  countdownMillis = millis();
+  leds = numberArray[countdownFrom];
+
+  while (!digitalRead(Start))
+    ;
+  digitalWrite(Buzzer, LOW);
 }
 
 void CoundownLOOP(void)
@@ -131,9 +169,9 @@ void shiftOut1(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
       digitalWrite(dataPin, !!(val & (1 << (7 - i))));
 
     digitalWrite(clockPin, HIGH);
-    delayMicroseconds(100);
+    // delayMicroseconds(100);
     digitalWrite(clockPin, LOW);
-    delayMicroseconds(100);
+    // delayMicroseconds(100);
   }
 }
 
@@ -144,26 +182,25 @@ void Blink(int Pin)
   {
     countdownMillis = millis();
 
-    // leds = numberArray[_index];
+    leds = numberArray[_index];
 
-    // if (digitalRead(Pin))
-    // {
-    //   Serial.print("Index: ");
-    //   Serial.print(_index);
-    //   Serial.print(", Binary: ");
-    //   for (int i = 7; i >= 0; i--)
-    //   {
-    //     Serial.print(bitRead(leds, i)); // Print each bit
-    //   }
-    //   Serial.println(); // Print newline for readability
-    //   _index++;
-    // }
+    if (digitalRead(Pin))
+    {
+      Serial.print("Index: ");
+      Serial.print(_index);
+      Serial.print(", Binary: ");
+      for (int i = 7; i >= 0; i--)
+      {
+        Serial.print(bitRead(leds, i)); // Print each bit
+      }
+      Serial.println(); // Print newline for readability
+      _index++;
+    }
 
-    // if (_index > 9)
-    // {
-    //   _index = 0;
-    //   leds = 0;
-    // }
+    if (_index > 9)
+    {
+      _index = 0;
+    }
 
     digitalWrite(Pin, !digitalRead(Pin));
   }
@@ -172,11 +209,11 @@ void Blink(int Pin)
 void updateShiftRegister()
 {
   digitalWrite(SG_Latch, LOW);
-  delayMicroseconds(100);
+  // delayMicroseconds(100);
   shiftOut1(SG_Data, SG_Clock, LSBFIRST, leds);
   // delayMicroseconds(100);
   digitalWrite(SG_Latch, HIGH);
-  delayMicroseconds(100);
+  // delayMicroseconds(100);
 }
 
 void update7segment(void)
