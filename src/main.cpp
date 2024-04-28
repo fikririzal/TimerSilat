@@ -114,15 +114,17 @@ void stopCoundown(void)
   countdownDone = false;
   leds = numberArray[countdownFrom];
 
-  while (!digitalRead(Stop))
-    ;
+  // while (!digitalRead(Stop))
+  //   ;
+  delay(200);
   digitalWrite(Buzzer, LOW);
 }
 
 void startCoundown(void)
 {
-  if (countdownIndex <= 0)
+  if (countdowning && countdownIndex >= 5 && !countdownDone)
   {
+    return;
   }
 
   countdowning = true;
@@ -131,8 +133,9 @@ void startCoundown(void)
   countdownMillis = millis();
   leds = numberArray[countdownFrom];
 
-  while (!digitalRead(Start))
-    ;
+  // while (!digitalRead(Start))
+  //   ;
+  delay(200);
   digitalWrite(Buzzer, LOW);
 }
 
